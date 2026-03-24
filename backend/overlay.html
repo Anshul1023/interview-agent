@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<title>AI Assist</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{
+  width:100%;height:100%;
+  background:#0d1117;
+  font-family:'Segoe UI',system-ui,sans-serif;
+  overflow:hidden;color:#e6edf3;
+}
+.wrap{width:100%;height:100vh;display:flex;flex-direction:column;}
+
+/* Bar */
+.bar{
+  background:#161b22;padding:7px 10px;
+  display:flex;align-items:center;gap:7px;
+  border-bottom:1px solid #30363d;flex-shrink:0;
+}
+.dot{width:8px;height:8px;border-radius:50%;background:#484f58;flex-shrink:0;transition:background .2s;}
+.dot.on   {background:#3b82f6;animation:p 1.4s infinite;}
+.dot.voice{background:#22c55e;animation:p .5s infinite;}
+.dot.wait {background:#f97316;animation:p .8s infinite;}
+.dot.done {background:#22c55e;}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.1}}
+.bar-title{font-size:11px;font-weight:700;color:#a78bfa;flex:1;}
+.bar-state{font-size:10px;color:#6e7681;white-space:nowrap;}
+
+/* Controls */
+.ctrl{
+  background:#0d1117;padding:4px 8px;
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  border-bottom:1px solid #21262d;flex-shrink:0;
+}
+.lbl{font-size:9px;color:#484f58;white-space:nowrap;}
+input[type=range]{accent-color:#7c3aed;cursor:pointer;height:12px;flex-shrink:0;}
+.btn{font-size:10px;padding:3px 10px;border-radius:5px;cursor:pointer;border:none;font-weight:700;white-space:nowrap;}
+.btn-start{background:#7c3aed;color:#fff;}
+.btn-stop {background:#dc2626;color:#fff;}
+.btn-clr  {background:#21262d;color:#94a3b8;border:1px solid #30363d;font-weight:400;}
+
+/* Volume */
+.vol-row{
+  display:flex;align-items:center;gap:5px;
+  padding:3px 8px;background:#0d1117;
+  border-bottom:1px solid #21262d;flex-shrink:0;
+}
+.vol-lbl{font-size:9px;color:#484f58;}
+.vol-track{flex:1;height:4px;background:#21262d;border-radius:2px;overflow:hidden;}
+.vol-fill{height:100%;width:0;border-radius:2px;transition:width .04s;}
+
+/* Silence countdown */
+.sil-row{
+  display:none;align-items:center;gap:5px;
+  padding:2px 8px;background:#0d1117;
+  border-bottom:1px solid #21262d;flex-shrink:0;
+}
+.sil-lbl{font-size:9px;color:#f97316;}
+.sil-track{flex:1;height:3px;background:#21262d;border-radius:2px;overflow:hidden;}
+.sil-fill{height:100%;width:100%;background:#f97316;border-radius:2px;transition:width linear;}
+
+/* Question */
+.qbar{
+  padding:5px 10px;background:#1c2128;
+  border-bottom:1px solid #21262d;
+  font-size:10px;color:#fbbf24;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  display:none;flex-shrink:0;
+}
+
+/* Body */
+.body{flex:1;padding:10px 12px;overflow-y:auto;min-height:0;}
+#resp{font-size:13px;line-height:1.8;white-space:pre-wrap;}
+.idle {color:#484f58;font-style:italic;}
+.wait {color:#a78bfa;font-style:italic;}
+.ans  {color:#e6edf3;}
+
+/* Type */
+.type-row{
+  display:flex;gap:5px;padding:6px 8px;
+  border-top:1px solid #21262d;background:#0d1117;flex-shrink:0;
+}
+.type-in{
+  flex:1;background:#161b22;border:1px solid #30363d;
+  border-radius:6px;color:#e6edf3;font-size:12px;
+  padding:5px 8px;outline:none;
+}
+.type-in::placeholder{color:#484f58;}
+.type-in:focus{border-color:#7c3aed;}
+.ask-btn{
+  background:#7c3aed;color:#fff;border:none;
+  border-radius:6px;padding:5px 11px;
+  font-size:11px;font-weight:700;cursor:pointer;
+}
+.ask-btn:disabled{background:#2d2d3d;color:#484f58;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-thumb{background:#30363d;border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="bar">
+    <span class="dot" id="dot"></span>
+    <span class="bar-title">🤖 AI Interview Assistant</span>
+    <span class="bar-state" id="st">Ready</span>
+    <button onclick="window.close()" style="background:#3f1a1a;border:1px solid #dc2626;color:#fca5a5;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer;margin-left:4px;">✕</button>
+  </div>
+
+  <div class="ctrl">
+    <button class="btn btn-start" id="mb" onclick="toggle()">🎤 Start</button>
+    <span class="lbl">Opacity</span>
+    <input type="range" style="width:55px" min="15" max="100" value="97"
+      oninput="document.body.style.opacity=this.value/100"/>
+    <span class="lbl">W</span>
+    <input type="range" style="width:55px" min="260" max="720" value="400"
+      oninput="window.resizeTo(+this.value,window.outerHeight)"/>
+    <span class="lbl">H</span>
+    <input type="range" style="width:55px" min="180" max="800" value="420"
+      oninput="window.resizeTo(window.outerWidth,+this.value)"/>
+    <button class="btn btn-clr" onclick="clr()">🗑</button>
+  </div>
+
+  <div class="vol-row">
+    <span class="vol-lbl">MIC</span>
+    <div class="vol-track">
+      <div class="vol-fill" id="vf"></div>
+    </div>
+  </div>
+
+  <div class="sil-row" id="silRow">
+    <span class="sil-lbl">Sending in...</span>
+    <div class="sil-track">
+      <div class="sil-fill" id="sf"></div>
+    </div>
+  </div>
+
+  <div class="qbar" id="qb"></div>
+
+  <div class="body">
+    <div id="resp" class="idle">Click Start — speak freely — answers stream automatically</div>
+  </div>
+
+  <div class="type-row">
+    <input class="type-in" id="ti"
+      placeholder="Type any question and press Enter..."
+      onkeydown="if(event.key==='Enter')typed()"/>
+    <button class="ask-btn" id="ab" onclick="typed()">Ask →</button>
+  </div>
+
+</div>
+<script>
+const API   = "http://localhost:8000";
+const CNAME = new URLSearchParams(location.search).get("n") || "Candidate";
+
+// DOM
+const dot    = document.getElementById("dot");
+const st     = document.getElementById("st");
+const qb     = document.getElementById("qb");
+const resp   = document.getElementById("resp");
+const mb     = document.getElementById("mb");
+const vf     = document.getElementById("vf");
+const sf     = document.getElementById("sf");
+const silRow = document.getElementById("silRow");
+const ti     = document.getElementById("ti");
+const ab     = document.getElementById("ab");
+
+// Config
+const SIL_MS  = 1500;  // 1.5s silence → send
+const MIN_MS  = 400;   // min voice duration
+const VOL_THR = 8;     // RMS threshold
+
+// State
+let ws, ctx, analyser, recorder, mic;
+let chunks=[], isOn=false, busy=false, voiced=false;
+let silT=null, speechT=null, animId=null, silStart=null, full="";
+
+// UI
+function setDot(c,s){dot.className="dot "+(c||"");st.innerText=s;}
+function clr(){resp.className="idle";resp.innerText="Cleared.";qb.style.display="none";full="";}
+function show(t,c){resp.className=c||"ans";resp.innerText=t;}
+function append(t){
+  if(full===""){resp.className="ans";resp.innerText="";}
+  full+=t; resp.innerText=full;
+  document.querySelector(".body").scrollTop=99999;
+}
+function showSilBar(show){
+  silRow.style.display = show ? "flex" : "none";
+}
+
+// WS
+function openWS(){
+  if(ws&&ws.readyState===WebSocket.OPEN)return;
+  ws=new WebSocket(API.replace("http","ws")+"/ws/audio");
+  ws.onerror=()=>setDot("","Backend not running!");
+  ws.onmessage=({data})=>{
+    const m=JSON.parse(data);
+    if(m.type==="transcript"){
+      const txt=(m.text||"").trim();
+      if(!txt||txt.split(" ").length<3){
+        busy=false; resume(); return;
+      }
+      qb.style.display="block"; qb.innerText="❓ "+txt;
+      show("⏳ Generating answer...","wait");
+      setDot("wait","Thinking...");
+      full="";
+    } else if(m.type==="llm_token"){
+      append(m.text);
+      setDot("wait","Answering...");
+    } else if(m.type==="llm_done"){
+      setDot("done","Done ✓");
+      busy=false;
+      // Resume listening after short pause
+      setTimeout(resume, 1000);
+    } else if(m.type==="error"){
+      show("❌ "+m.message,"ans");
+      setDot("","Error");
+      busy=false;
+      setTimeout(resume,2000);
+    }
+  };
+}
+
+// Resume continuous listening
+function resume(){
+  if(!isOn||busy)return;
+  voiced=false; speechT=null;
+  clearTimeout(silT); silT=null;
+  showSilBar(false);
+  chunks=[];
+  if(recorder&&recorder.state==="inactive"){
+    recorder.start(80);
+  }
+  setDot("on","Listening...");
+}
+
+// Send audio blob
+async function send(blob){
+  if(!blob||blob.size<3000){busy=false;resume();return;}
+  const buf=await blob.arrayBuffer();
+  const b=new Uint8Array(buf);
+  let s="";
+  for(let i=0;i<b.length;i+=8192)s+=String.fromCharCode(...b.subarray(i,i+8192));
+  const b64=btoa(s);
+  openWS();
+  await new Promise((res,rej)=>{
+    if(ws.readyState===WebSocket.OPEN){res();return;}
+    ws.addEventListener("open",res,{once:true});
+    ws.addEventListener("error",()=>rej(new Error("WS failed")),{once:true});
+    setTimeout(()=>rej(new Error("timeout")),5000);
+  });
+  ws.send(JSON.stringify({type:"audio_chunk",data:b64,candidate:CNAME}));
+  ws.send(JSON.stringify({type:"end_audio"}));
+}
+
+// VAD loop
+function startVAD(){
+  const buf=new Uint8Array(analyser.fftSize);
+  function loop(){
+    if(!isOn){vf.style.width="0%";return;}
+    animId=requestAnimationFrame(loop);
+    if(busy){vf.style.width="0%";return;}
+    analyser.getByteTimeDomainData(buf);
+    let s=0;
+    for(let i=0;i<buf.length;i++){const v=(buf[i]-128)/128;s+=v*v;}
+    const rms=Math.sqrt(s/buf.length)*100;
+    const pct=Math.min(rms*5,100);
+    vf.style.width=pct+"%";
+    vf.style.background=rms>VOL_THR?"#22c55e":"#3b82f6";
+
+    if(rms>VOL_THR){
+      // Voice detected
+      if(!voiced){
+        voiced=true;
+        speechT=Date.now();
+        clearTimeout(silT);silT=null;
+        showSilBar(false);
+        dot.className="dot voice";
+        if(recorder&&recorder.state==="inactive"){
+          chunks=[];recorder.start(80);
+        }
+      } else {
+        clearTimeout(silT);silT=null;
+        showSilBar(false);
+      }
+    } else {
+      // Silence
+      if(voiced&&!silT){
+        silStart=Date.now();
+        // Show silence countdown bar
+        showSilBar(true);
+        sf.style.transition="none";
+        sf.style.width="100%";
+        requestAnimationFrame(()=>{
+          sf.style.transition=`width ${SIL_MS}ms linear`;
+          sf.style.width="0%";
+        });
+
+        silT=setTimeout(()=>{
+          silT=null;
+          if(!voiced)return;
+          const dur=Date.now()-(speechT||0);
+          voiced=false;
+          showSilBar(false);
+
+          if(dur<MIN_MS){
+            // Too short — ignore and restart
+            if(recorder?.state==="recording")recorder.stop();
+            setTimeout(()=>{if(isOn&&!busy)resume();},150);
+            return;
+          }
+          // Good speech — send it
+          if(recorder?.state==="recording"){
+            busy=true;
+            setDot("wait","Processing...");
+            recorder.stop();
+          }
+        },SIL_MS);
+      }
+    }
+  }
+  loop();
+}
+
+// recorder.onstop handler
+function setupRecorder(mime){
+  recorder.ondataavailable=(e)=>{if(e.data.size>0)chunks.push(e.data);};
+  recorder.onstop=async()=>{
+    if(!busy)return;
+    const blob=new Blob([...chunks],{type:mime});
+    chunks=[];
+    try{await send(blob);}
+    catch(e){
+      show("❌ "+e.message,"ans");
+      busy=false;
+      setTimeout(resume,2000);
+    }
+  };
+}
+
+// Toggle
+async function toggle(){
+  if(!isOn)await startAgent();else stopAgent();
+}
+
+async function startAgent(){
+  try{
+    setDot("","Starting...");mb.disabled=true;
+    mic=await navigator.mediaDevices.getUserMedia({
+      audio:{
+        echoCancellation:true,noiseSuppression:true,
+        autoGainControl:true,sampleRate:16000,channelCount:1
+      }
+    });
+    ctx=new AudioContext({sampleRate:16000});
+    analyser=ctx.createAnalyser();
+    analyser.fftSize=512;
+    ctx.createMediaStreamSource(mic).connect(analyser);
+
+    const mime=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+      ?"audio/webm;codecs=opus":"audio/webm";
+    recorder=new MediaRecorder(mic,{mimeType:mime});
+    chunks=[];
+    setupRecorder(mime);
+    recorder.start(80);
+
+    isOn=true;mb.disabled=false;
+    mb.textContent="⏹ Stop";mb.className="btn btn-stop";
+    show("🎤 Listening continuously — just speak naturally...","idle");
+    setDot("on","Listening...");
+    openWS();startVAD();
+  }catch(e){
+    mb.disabled=false;
+    show("❌ "+e.message,"ans");
+    setDot("","Error");
+  }
+}
+
+function stopAgent(){
+  isOn=false;busy=false;voiced=false;
+  clearTimeout(silT);silT=null;
+  cancelAnimationFrame(animId);
+  vf.style.width="0%";
+  showSilBar(false);
+  try{if(recorder?.state!=="inactive")recorder.stop();}catch(_){}
+  try{mic?.getTracks().forEach(t=>t.stop());}catch(_){}
+  try{ctx?.close();}catch(_){}
+  try{ws?.close();}catch(_){}
+  ctx=null;analyser=null;recorder=null;mic=null;ws=null;
+  mb.textContent="🎤 Start";mb.className="btn btn-start";
+  setDot("","Stopped");
+}
+
+// Typed question
+async function typed(){
+  const q=ti.value.trim();if(!q)return;
+  ti.value="";ab.disabled=true;
+  qb.style.display="block";qb.innerText="❓ "+q;
+  show("⏳ Generating answer...","wait");
+  setDot("wait","Thinking...");full="";
+  try{
+    const rr=await fetch(`${API}/resume/${encodeURIComponent(CNAME)}`).catch(()=>null);
+    const rd=rr?.ok?await rr.json():{};
+    const r=await fetch(`${API}/ask`,{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({question:q,candidate_name:CNAME,resume_context:rd.content||""})
+    });
+    if(!r.ok)throw new Error("Backend error");
+    const reader=r.body.getReader();const dec=new TextDecoder();
+    while(true){
+      const{done,value}=await reader.read();if(done)break;
+      for(const line of dec.decode(value).split("\n")){
+        if(!line.startsWith("data: "))continue;
+        const t=line.slice(6);if(t==="[DONE]")break;
+        append(t);
+      }
+    }
+    setDot(isOn?"on":"done",isOn?"Listening...":"Done ✓");
+  }catch(e){
+    show("❌ "+e.message,"ans");setDot("","Error");
+  }finally{ab.disabled=false;}
+}
+</script>
+</body>
+</html>

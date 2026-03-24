@@ -1,0 +1,35 @@
+{
+  "name": "interview-ai-agent",
+  "version": "1.0.0",
+  "description": "AI-powered interview assistant",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:frontend": "vite --config frontend/vite.config.js",
+    "build:frontend": "vite build --config frontend/vite.config.js",
+    "electron": "electron . --disable-gpu --disable-software-rasterizer",
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run electron\"",
+    "build": "npm run build:frontend && electron-builder"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^8.2.2",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "vite": "^5.3.1"
+  },
+  "build": {
+    "appId": "com.interviewai.agent",
+    "productName": "Interview AI Agent",
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*"
+    ],
+    "mac": { "target": "dmg" },
+    "win": { "target": "nsis" },
+    "linux": { "target": "AppImage" }
+  }
+}

@@ -1,0 +1,12 @@
+notepad .gitignore
+
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.env
+dist/
+build/
+*.exe
+*.log
+data/resumes.json
