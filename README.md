@@ -2,7 +2,7 @@
 
 A real-time AI assistant that listens to interview questions (voice or typed),
 and streams answers to a floating overlay window that is **completely hidden**
-from screen recording, Zoom/Meet screen share, taskbar, and Alt+Tab.
+from screen recording, Zoom/Meet screen share, taskbar,and Alt+Tab.
 
 ---
 
